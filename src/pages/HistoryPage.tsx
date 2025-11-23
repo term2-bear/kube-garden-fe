@@ -126,7 +126,7 @@ export default function HistoryPage() {
 
   const getStatusDisplay = (record: DeploymentRecord) => {
     const isFailed = record.status.includes('FAILED') || record.error;
-    const isSuccess = record.status === 'SUCCESS' || record.status === 'DEPLOYED' || record.status === 'IMAGE_VALIDATED';
+    const isSuccess = record.status === 'SUCCESS' || record.status === 'DEPLOYED' || record.status === 'IMAGE_VALIDATED' || record.status === 'PROMOTED';
     const isInProgress = record.status.includes('PROGRESS') || record.status.includes('TRIGGERED') || record.status.includes('IN_PROGRESS');
 
     if (isSuccess) {
