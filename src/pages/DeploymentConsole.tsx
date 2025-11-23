@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, CheckCircle, Loader2, ShieldCheck, Terminal, Activity, ArrowLeft, Check, Sprout, Trees, Flower2, Bot, Sparkles, AlertCircle, Info } from 'lucide-react';
+import { Play, CheckCircle, Loader2, ShieldCheck, Terminal, Activity, ArrowLeft, Check, Sprout, Trees, Flower2, Bot, Sparkles, AlertCircle, Info, TrendingUp, AlertTriangle, CheckCircle2, Target } from 'lucide-react';
 import confetti from 'canvas-confetti'; // celebratory confetti
 import toast, { Toaster } from 'react-hot-toast'; // toast notifications
 import { useLanguage } from '../components/LanguageContext';
@@ -10,6 +10,58 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 type LogMeta = {
   role: 'agent' | 'user' | 'system';
   text: string;
+};
+
+// DynamoDB format parser
+const parseDynamoDBValue = (value: any): any => {
+  if (!value || typeof value !== 'object') return value;
+  
+  if (value.S) return value.S; // String
+  if (value.N) return parseFloat(value.N); // Number
+  if (value.L) return value.L.map((item: any) => parseDynamoDBValue(item)); // List
+  if (value.M) {
+    const result: any = {};
+    for (const [key, val] of Object.entries(value.M)) {
+      result[key] = parseDynamoDBValue(val);
+    }
+    return result;
+  }
+  return value;
+};
+
+interface AiAnalysisData {
+  risks?: string[];
+  decision?: string;
+  metrics_status?: Record<string, string>;
+  recommendations?: string[];
+  confidence?: number;
+  reasoning?: string;
+}
+
+const parseAiAnalysis = (data: any): AiAnalysisData | null => {
+  if (!data) return null;
+  
+  try {
+    // If it's already a parsed object, return it
+    if (typeof data === 'object' && !data.S && !data.M && !data.L) {
+      return data as AiAnalysisData;
+    }
+    
+    // Parse DynamoDB format
+    const parsed = parseDynamoDBValue(data);
+    
+    return {
+      risks: parsed.risks || [],
+      decision: parsed.decision || '',
+      metrics_status: parsed.metrics_status || {},
+      recommendations: parsed.recommendations || [],
+      confidence: parsed.confidence || 0,
+      reasoning: parsed.reasoning || '',
+    };
+  } catch (error) {
+    console.error('Error parsing aiAnalysis:', error);
+    return null;
+  }
 };
 
 const parseLogEntry = (entry: string): LogMeta => {
@@ -127,6 +179,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         title: 'Build Successful',
         description: 'If there are any issues, click Rollback. Otherwise, click Promote to Deploy.',
         promote: 'Promote to Deploy',
+        promoting: 'Promoting...',
         rollback: 'Rollback',
         chartTitle: 'Latency Comparison (ms)',
       },
@@ -157,6 +210,12 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         : "Gardener Agent: Ready to deploy. Click 'Deploy with Gardener Agent' to start.",
       userLabel: 'You',
       agentLabel: 'Gardener Agent',
+      promote: {
+        deploying: "Gardener Agent: Deploying in progress. Please wait...",
+        success: "Gardener Agent: Deployment completed successfully!",
+        waitingAnalysis: "Gardener Agent: Waiting for AI analysis. Please wait...",
+        analysisReady: "Gardener Agent: AI analysis is ready!",
+      },
     },
     ja: {
       headerPrefix: isRedeploy ? '再デプロイ中:' : 'デプロイ中:',
@@ -190,6 +249,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         title: 'Build Successful',
         description: '問題があればロールバックをクリックしてください。問題がなければ、Promote to Deployボタンをクリックしてください。',
         promote: 'Promote to Deploy',
+        promoting: '昇格中...',
         rollback: 'Rollback',
         chartTitle: 'レイテンシ比較 (ms)',
       },
@@ -220,6 +280,81 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         : "ガーデナーエージェント: デプロイ準備完了です。「エージェントとデプロイ」をクリックしてください。",
       userLabel: 'あなた',
       agentLabel: 'ガーデナーエージェント',
+      promote: {
+        deploying: "ガーデナーエージェント: デプロイ中です。お待ちください...",
+        success: "ガーデナーエージェント: デプロイが正常に完了しました！",
+        waitingAnalysis: "ガーデナーエージェント: AI分析を待っています。お待ちください...",
+        analysisReady: "ガーデナーエージェント: AI分析の準備ができました！",
+      },
+    },
+    ko: {
+      headerPrefix: isRedeploy ? '재배포 중:' : '배포 중:',
+      environment: '프로덕션 환경',
+      strategyLabel: '전략',
+      strategyOptions: {
+        canary: 'Canary 배포 (권장)',
+        blue: 'Blue-Green 배포',
+      },
+      plant: {
+        idle: '성장 준비 완료',
+        planning: '싹이 트는 중...',
+        running: '꽃이 피는 중...',
+        success: '완전히 자랐습니다!',
+      },
+      timeline: {
+        lint: '테스트 & Lint',
+        scan: '보안 스캔',
+        canary: '배포',
+      },
+      buttons: {
+        deploy: isRedeploy ? '가든 에이전트로 재배포' : '가든 에이전트로 배포',
+        processing: '처리 중...',
+        ready: '배포 준비 완료',
+        failed: '배포 실패',
+      },
+      info: {
+        strategy: '이 배포는 Canary 전략을 사용합니다.',
+      },
+      successPanel: {
+        title: '빌드 성공',
+        description: '문제가 있으면 롤백을 클릭하세요. 문제가 없으면 Promote to Deploy를 클릭하세요.',
+        promote: 'Promote to Deploy',
+        promoting: '승격 중...',
+        rollback: '롤백',
+        chartTitle: '지연 시간 비교 (ms)',
+      },
+      promotedPanel: {
+        title: '배포가 성공적으로 승격되었습니다!',
+        description: '배포가 성공적으로 승격되었습니다. 모든 시스템이 정상적으로 작동하고 있습니다.',
+        backToDashboard: '대시보드로 돌아가기',
+      },
+      failedPanel: {
+        title: '빌드 실패',
+        description: '빌드 프로세스에서 오류가 발생했습니다. 자세한 내용은 위의 로그를 확인하세요.',
+        retry: '다시 시도',
+      },
+      toast: {
+        initializing: '배포 에이전트 초기화 중...',
+        planCreated: '계획 생성 완료! 테스트 실행 중.',
+        securityClear: '보안 검사 통과. Canary 배포 중.',
+        canaryLive: '빌드 라이브!',
+        failedStart: '배포 시작 실패',
+        failed: '배포 실패',
+        promoteSuccess: '성공적으로 승격되었습니다!',
+        rollbackStart: '이전 버전으로 롤백 중...',
+        rollbackDone: '롤백 완료.',
+      },
+      logReady: isRedeploy
+        ? "가든 에이전트: 재배포 준비 완료. '가든 에이전트로 재배포'를 클릭하여 시작하세요."
+        : "가든 에이전트: 배포 준비 완료. '가든 에이전트로 배포'를 클릭하여 시작하세요.",
+      userLabel: '사용자',
+      agentLabel: '가든 에이전트',
+      promote: {
+        deploying: "가든 에이전트: 배포 중입니다. 기다려주세요...",
+        success: "가든 에이전트: 배포가 성공적으로 완료되었습니다!",
+        waitingAnalysis: "가든 에이전트: AI 분석 응답을 기다리는 중입니다. 기다려주세요...",
+        analysisReady: "가든 에이전트: AI 분석이 준비되었습니다!",
+      },
     },
   } as const;
   const t = copy[language];
@@ -228,6 +363,8 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
   const [status, setStatus] = useState<'idle' | 'planning' | 'running' | 'success' | 'failed' | 'promoted'>('idle');
   const [logs, setLogs] = useState<string[]>([t.logReady]);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isPromoting, setIsPromoting] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const API_URL = import.meta.env.VITE_API_URL;
@@ -363,6 +500,11 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
 
         console.log('Poll response:', deployment);
 
+        // Check for aiAnalysis
+        if (deployment.aiAnalysis && deployment.aiAnalysis !== null) {
+          setAiAnalysis(deployment.aiAnalysis);
+        }
+
         // Fallback: if error exists, treat as failed
         if (deployment.error && !currentStatus?.includes('SUCCESS') && !currentStatus?.includes('DEPLOYED')) {
           if (currentStatus !== lastStatusRef.current) {
@@ -458,9 +600,10 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
   };
 
   const handlePromote = async () => {
-    if (!deploymentId) return;
+    if (!deploymentId || isPromoting) return;
 
-    setLogs(prev => [...prev, "User: Confirmed. Promoting to deploy", "Gardener Agent: Deployment Finalized. 🚀"]);
+    setIsPromoting(true);
+    setLogs(prev => [...prev, "User: Confirmed. Promoting to deploy", t.promote.deploying]);
 
     try {
       const response = await fetch(`${API_URL}/deploy/${deploymentId}/promote`, {
@@ -471,23 +614,102 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         throw new Error('Failed to promote deployment');
       }
 
-      await sleep(1000);
-
-      // Fire celebratory confetti
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
-      });
-      toast.success(t.toast.promoteSuccess, { duration: 4000, icon: '🎉' });
-
-      await sleep(2000);
-      setStatus('promoted');
+      // Start polling for finalStatus to be SUCCESS
+      pollForPromoteSuccess(deploymentId);
     } catch (error) {
       console.error('Promote error:', error);
       toast.error('Failed to promote deployment');
+      setIsPromoting(false);
     }
+  };
+
+  const pollForPromoteSuccess = async (id: string) => {
+    let finalStatusReached = false;
+    
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`${API_URL}/deploy/${id}`);
+        if (!response.ok) {
+          if (response.status >= 500) {
+            console.error('Server error while polling promote status:', response.status);
+            return;
+          }
+          await sleep(3000);
+          return checkStatus();
+        }
+
+        const data = await response.json();
+        const deployment = data.deployment || data;
+        const finalStatus = deployment.deploymentPlan?.finalStatus || deployment.finalStatus;
+        
+        console.log('Polling for promote success, finalStatus:', finalStatus, 'aiAnalysis:', deployment.aiAnalysis);
+
+        // First, wait for finalStatus to be SUCCESS
+        if (!finalStatusReached && finalStatus === 'SUCCESS') {
+          finalStatusReached = true;
+          setLogs(prev => [...prev, t.promote.success]);
+          setLogs(prev => [...prev, t.promote.waitingAnalysis]);
+          
+          // Check if aiAnalysis already exists
+          if (deployment.aiAnalysis && deployment.aiAnalysis !== null) {
+            setAiAnalysis(deployment.aiAnalysis);
+            setLogs(prev => [...prev, t.promote.analysisReady]);
+            
+            // Fire celebratory confetti
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+            });
+            toast.success(t.toast.promoteSuccess, { duration: 4000, icon: '🎉' });
+
+            await sleep(1000);
+            setStatus('promoted');
+            setIsPromoting(false);
+            return; // Stop polling
+          }
+          
+          // Continue polling for aiAnalysis
+          await sleep(3000);
+          return checkStatus();
+        }
+
+        // After finalStatus is SUCCESS, wait for aiAnalysis
+        if (finalStatusReached) {
+          if (deployment.aiAnalysis && deployment.aiAnalysis !== null) {
+            setAiAnalysis(deployment.aiAnalysis);
+            setLogs(prev => [...prev, t.promote.analysisReady]);
+            
+            // Fire celebratory confetti
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+            });
+            toast.success(t.toast.promoteSuccess, { duration: 4000, icon: '🎉' });
+
+            await sleep(1000);
+            setStatus('promoted');
+            setIsPromoting(false);
+            return; // Stop polling once we have aiAnalysis
+          }
+          
+          // Continue polling for aiAnalysis
+          await sleep(3000);
+          return checkStatus();
+        }
+
+        // Continue polling if finalStatus is not SUCCESS yet
+        await sleep(3000);
+        checkStatus();
+      } catch (error) {
+        console.error('Error polling promote status:', error);
+      }
+    };
+
+    checkStatus();
   };
 
   const handleRollback = async () => {
@@ -579,6 +801,105 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
                 </div>
                 <p className="text-lg font-bold text-green-700">{t.promotedPanel.title}</p>
                 <p className="text-sm text-slate-500 text-center">{t.promotedPanel.description}</p>
+                {aiAnalysis && (() => {
+                  const parsed = parseAiAnalysis(aiAnalysis);
+                  if (!parsed) return null;
+                  
+                  return (
+                    <div className="w-full mt-4 space-y-4">
+                      {/* Confidence Header */}
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Bot size={20} className="text-blue-600" />
+                            <p className="text-sm font-bold text-blue-800">AI Analysis</p>
+                          </div>
+                          {parsed.confidence && (
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100">
+                              <Target size={14} className="text-blue-600" />
+                              <span className="text-xs font-bold text-blue-700">
+                                {Math.round(parsed.confidence * 100)}% Confidence
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Metrics Status */}
+                      {parsed.metrics_status && Object.keys(parsed.metrics_status).length > 0 && (
+                        <div className="p-4 rounded-xl bg-green-50 border-2 border-green-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp size={18} className="text-green-600" />
+                            <p className="text-sm font-bold text-green-800">Metrics Status</p>
+                          </div>
+                          <div className="space-y-2">
+                            {Object.entries(parsed.metrics_status).map(([metric, status]) => (
+                              <div key={metric} className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-slate-700 capitalize">
+                                  {metric.replace(/_/g, ' ')}
+                                </span>
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                  status === 'within threshold' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reasoning */}
+                      {parsed.reasoning && (
+                        <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Info size={18} className="text-slate-600" />
+                            <p className="text-sm font-bold text-slate-800">Reasoning</p>
+                          </div>
+                          <p className="text-xs text-slate-700 leading-relaxed">{parsed.reasoning}</p>
+                        </div>
+                      )}
+
+                      {/* Risks */}
+                      {parsed.risks && parsed.risks.length > 0 && (
+                        <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <AlertTriangle size={18} className="text-amber-600" />
+                            <p className="text-sm font-bold text-amber-800">Potential Risks</p>
+                          </div>
+                          <ul className="space-y-2">
+                            {parsed.risks.map((risk, idx) => (
+                              <li key={idx} className="flex items-start gap-2">
+                                <span className="text-amber-600 mt-0.5">•</span>
+                                <span className="text-xs text-slate-700 flex-1">{risk}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Recommendations */}
+                      {parsed.recommendations && parsed.recommendations.length > 0 && (
+                        <div className="p-4 rounded-xl bg-indigo-50 border-2 border-indigo-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle size={18} className="text-indigo-600" />
+                            <p className="text-sm font-bold text-indigo-800">Recommendations</p>
+                          </div>
+                          <ul className="space-y-2">
+                            {parsed.recommendations.map((rec, idx) => (
+                              <li key={idx} className="flex items-start gap-2">
+                                <CheckCircle2 size={14} className="text-indigo-600 mt-0.5 flex-shrink-0" />
+                                <span className="text-xs text-slate-700 flex-1">{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <button
                   onClick={onBack}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 text-lg font-bold text-white shadow-lg shadow-green-200 hover:bg-green-700 transition-all active:scale-95"
@@ -665,13 +986,30 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
               <div className="flex gap-4">
                 <button
                   onClick={handlePromote}
-                  className="flex-1 rounded-xl bg-green-600 py-3 px-5 text-sm font-bold text-white hover:bg-green-700 shadow-md shadow-green-100 transition-colors"
+                  disabled={isPromoting}
+                  className={`flex-1 rounded-xl py-3 px-5 text-sm font-bold text-white shadow-md transition-colors ${
+                    isPromoting
+                      ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                      : 'bg-green-600 hover:bg-green-700 shadow-green-100'
+                  }`}
                 >
-                  {t.successPanel.promote}
+                  {isPromoting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      {t.successPanel.promoting}
+                    </span>
+                  ) : (
+                    t.successPanel.promote
+                  )}
                 </button>
                 <button
                   onClick={handleRollback}
-                  className="flex-1 rounded-xl bg-white border-2 border-slate-300 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                  disabled={isPromoting}
+                  className={`flex-1 rounded-xl border-2 py-3 text-sm font-bold transition-colors ${
+                    isPromoting
+                      ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-red-500 hover:border-red-200'
+                  }`}
                 >
                   {t.successPanel.rollback}
                 </button>
