@@ -131,7 +131,7 @@ export default function DashboardPage({ onManage, onStartDeploy }: DashboardPage
         lastDeploy: 'Last Deploy',
       },
       serviceCard: {
-        version: 'Version',
+        version: 'URL',
         lastWatered: 'Last Watered',
         manage: 'Manage Deployment',
         deleteTitle: 'Delete service',
@@ -164,7 +164,7 @@ export default function DashboardPage({ onManage, onStartDeploy }: DashboardPage
         lastDeploy: '最終デプロイ',
       },
       serviceCard: {
-        version: 'Version',
+        version: 'URL',
         lastWatered: 'Last Watered',
         manage: 'デプロイ管理',
         deleteTitle: 'サービスを削除',
