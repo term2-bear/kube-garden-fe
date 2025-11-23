@@ -19,6 +19,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { language } = useLanguage();
+
   const copy = {
     en: {
       title: 'Deployment Log 📜',
@@ -138,6 +139,22 @@ export default function HistoryPage() {
     return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">{record.status}</span>;
   };
 
+  // [추가됨] 객체 형태의 데이터를 안전하게 문자열로 변환하여 렌더링하는 함수
+  const safeRender = (content: any) => {
+    if (!content) return null;
+    if (typeof content === 'string') return content;
+
+    // 객체인 경우 (Error, Cause 등의 키가 있거나 일반 객체인 경우)
+    if (typeof content === 'object') {
+      // 에러 로그에 나온 포맷 대응
+      if (content.Error) return content.Error;
+      if (content.message) return content.message;
+      // 그 외의 경우 JSON 문자열로 변환하여 출력
+      return JSON.stringify(content);
+    }
+    return String(content);
+  };
+
   const formatTime = (timestamp: number) => {
     const diff = Date.now() - timestamp;
     const minutes = Math.floor(diff / 60000);
@@ -202,9 +219,12 @@ export default function HistoryPage() {
                       <GitCommit size={12} /> {record.imageTag}
                     </div>
                   </td>
+
+                  {/* [수정됨] safeRender 적용하여 객체 오류 방지 */}
                   <td className="px-6 py-4 text-slate-600 max-w-xs truncate">
-                    {record.description || record.error || '-'}
+                    {safeRender(record.description) || safeRender(record.error) || '-'}
                   </td>
+
                   <td className="px-6 py-4 text-xs text-slate-400">
                     {formatTime(record.createdAt)}
                   </td>
