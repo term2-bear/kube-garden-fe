@@ -153,6 +153,11 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         rollback: 'Rollback',
         chartTitle: 'Latency Comparison (ms)',
       },
+      promotedPanel: {
+        title: 'Deployment Promoted Successfully!',
+        description: 'Your deployment has been successfully promoted to 100% traffic. All systems are running smoothly.',
+        backToDashboard: 'Back to Dashboard',
+      },
       failedPanel: {
         title: 'Deployment Failed',
         description: 'The deployment process encountered an error. Please check the logs above for details.',
@@ -211,6 +216,11 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         rollback: 'ロールバック',
         chartTitle: 'レイテンシ比較 (ms)',
       },
+      promotedPanel: {
+        title: 'デプロイの昇格が成功しました！',
+        description: 'デプロイは100%のトラフィックに正常に昇格しました。すべてのシステムが正常に動作しています。',
+        backToDashboard: 'ダッシュボードに戻る',
+      },
       failedPanel: {
         title: 'デプロイ失敗',
         description: 'デプロイ処理でエラーが発生しました。上部のログを確認してください。',
@@ -238,7 +248,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
   const t = copy[language];
 
   const serviceName = deploymentConfig?.serviceName || 'demo-api';
-  const [status, setStatus] = useState<'idle' | 'planning' | 'running' | 'success' | 'failed'>('idle');
+  const [status, setStatus] = useState<'idle' | 'planning' | 'running' | 'success' | 'failed' | 'promoted'>('idle');
   const [logs, setLogs] = useState<string[]>([t.logReady]);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -496,8 +506,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
       toast.success(t.toast.promoteSuccess, { duration: 4000, icon: '🎉' });
 
       await sleep(2000);
-      setStatus('idle');
-      setLogs([t.logReady]);
+      setStatus('promoted');
     } catch (error) {
       console.error('Promote error:', error);
       toast.error('Failed to promote deployment');
@@ -534,6 +543,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
   const isProcessing = status === 'planning' || status === 'running';
   const isSuccess = status === 'success';
   const isFailed = status === 'failed';
+  const isPromoted = status === 'promoted';
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-stone-50">
@@ -558,7 +568,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         <div className="flex-1 overflow-y-auto p-8">
           <div className="space-y-6">
             {/* Animated plant visualization */}
-            <GrowingPlant status={status} labels={t.plant} />
+            {!isPromoted && <GrowingPlant status={status} labels={t.plant} />}
 
             {/* Strategy Info */}
             {status === 'idle' && (
@@ -568,24 +578,42 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
               </div>
             )}
 
-            <button
-              onClick={handleDeploy}
-              disabled={status !== 'idle'}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white shadow-lg transition-all active:scale-95 
-                      ${status === 'idle' ? 'bg-green-600 shadow-green-200 hover:bg-green-700' : ''}
-                      ${isProcessing ? 'bg-slate-400 shadow-none cursor-not-allowed' : ''}
-                      ${isSuccess ? 'bg-green-800 shadow-none cursor-not-allowed' : ''}
-                      ${isFailed ? 'bg-red-600 shadow-none cursor-not-allowed' : ''}
-                    `}
-            >
-              {status === 'idle' && <><Play size={20} /> {t.buttons.deploy}</>}
-              {isProcessing && <><Loader2 className="animate-spin" /> {t.buttons.processing}</>}
-              {isSuccess && <><Check size={20} /> {t.buttons.ready}</>}
-              {isFailed && <><AlertCircle size={20} /> {t.buttons.failed}</>}
-            </button>
+            {!isPromoted && (
+              <button
+                onClick={handleDeploy}
+                disabled={status !== 'idle'}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white shadow-lg transition-all active:scale-95 
+                        ${status === 'idle' ? 'bg-green-600 shadow-green-200 hover:bg-green-700' : ''}
+                        ${isProcessing ? 'bg-slate-400 shadow-none cursor-not-allowed' : ''}
+                        ${isSuccess ? 'bg-green-800 shadow-none cursor-not-allowed' : ''}
+                        ${isFailed ? 'bg-red-600 shadow-none cursor-not-allowed' : ''}
+                      `}
+              >
+                {status === 'idle' && <><Play size={20} /> {t.buttons.deploy}</>}
+                {isProcessing && <><Loader2 className="animate-spin" /> {t.buttons.processing}</>}
+                {isSuccess && <><Check size={20} /> {t.buttons.ready}</>}
+                {isFailed && <><AlertCircle size={20} /> {t.buttons.failed}</>}
+              </button>
+            )}
+            {isPromoted && (
+              <div className="flex flex-col items-center gap-4 py-8">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white shadow-xl bg-green-200 text-green-700">
+                  <CheckCircle size={48} strokeWidth={1.5} />
+                </div>
+                <p className="text-lg font-bold text-green-700">{t.promotedPanel.title}</p>
+                <p className="text-sm text-slate-500 text-center">{t.promotedPanel.description}</p>
+                <button
+                  onClick={onBack}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 text-lg font-bold text-white shadow-lg shadow-green-200 hover:bg-green-700 transition-all active:scale-95"
+                >
+                  <ArrowLeft size={20} />
+                  {t.promotedPanel.backToDashboard}
+                </button>
+              </div>
+            )}
 
             {/* Timeline Status */}
-            {status !== 'idle' && (
+            {status !== 'idle' && !isPromoted && (
               <div className="mt-4 rounded-2xl bg-slate-50 p-6 border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between gap-2">
                   <TimelineStep icon={Terminal} label={t.timeline.lint} status={status === 'planning' ? 'running' : 'done'} />
@@ -602,9 +630,10 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
 
       {/* Right Panel */}
       <div className="flex w-1/2 flex-col bg-stone-100">
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="flex flex-col gap-4">
-            {logs.map((log, idx) => {
+        {!isPromoted && (
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex flex-col gap-4">
+              {logs.map((log, idx) => {
               const meta = parseLogEntry(log);
               const isAgent = meta.role === 'agent';
               const isUser = meta.role === 'user';
@@ -643,11 +672,12 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
                 </div>
               );
             })}
-            <div ref={logsEndRef} />
+              <div ref={logsEndRef} />
+            </div>
           </div>
-        </div>
+        )}
 
-        {isSuccess && (
+        {isSuccess && !isPromoted && (
           <div className="border-t border-slate-200 bg-white p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom-full duration-500">
             <div className="mb-4 flex items-center gap-2 text-green-700 font-bold text-lg">
               <CheckCircle size={24} /> {t.successPanel.title}
