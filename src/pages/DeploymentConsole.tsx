@@ -392,7 +392,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
             // Simulate deployment completion after 3 seconds
             await sleep(3000);
             setStatus('success');
-            setLogs(prev => [...prev, "Gardener Agent: Deployment successful! Canary is live."]);
+            setLogs(prev => [...prev, "Gardener Agent: Build successful! Canary is live."]);
             toast.success(t.toast.canaryLive, { id: 'deploy-toast' });
 
             await sleep(1000);
@@ -460,7 +460,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
   const handlePromote = async () => {
     if (!deploymentId) return;
 
-    setLogs(prev => [...prev, "User: Confirmed. Promoting to 100%.", "Gardener Agent: Traffic split updated (100% New). Deployment Finalized. 🚀"]);
+    setLogs(prev => [...prev, "User: Confirmed. Promoting to deploy", "Gardener Agent: Deployment Finalized. 🚀"]);
 
     try {
       const response = await fetch(`${API_URL}/deploy/${deploymentId}/promote`, {
