@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Play, CheckCircle, Loader2, ShieldCheck, Terminal, Activity, ArrowLeft, Check, Sprout, Trees, Flower2, Bot, Sparkles, AlertCircle, Info } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import confetti from 'canvas-confetti'; // celebratory confetti
 import toast, { Toaster } from 'react-hot-toast'; // toast notifications
 import { useLanguage } from '../components/LanguageContext';
@@ -79,28 +78,6 @@ const TimelineStep = ({ icon: Icon, label, status }: { icon: any, label: string,
   );
 };
 
-const MetricsChart = ({ title }: { title: string }) => {
-  const data = Array.from({ length: 20 }, (_, i) => ({
-    time: i,
-    before: 100 + Math.random() * 20,
-    after: i > 10 ? 80 + Math.random() * 10 : null,
-  }));
-
-  return (
-    <div className="h-64 w-full rounded-xl bg-white p-4 shadow-sm border border-slate-100">
-      <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">{title}</h4>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <XAxis dataKey="time" hide />
-          <YAxis hide domain={['auto', 'auto']} />
-          <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-          <Line type="monotone" dataKey="before" stroke="#cbd5e1" strokeDasharray="5 5" strokeWidth={2} dot={false} name="v1.0 (Old)" />
-          <Line type="monotone" dataKey="after" stroke="#10b981" strokeWidth={3} dot={false} name="v1.1 (New)" />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-};
 
 // --- Main component ---
 interface DeploymentConsoleProps {
@@ -147,20 +124,20 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         strategy: 'This deployment will use Canary strategy.',
       },
       successPanel: {
-        title: 'Deployment Successful',
-        description: 'Traffic is currently split 10% (New) / 90% (Old). Metrics indicate stability.',
-        promote: 'Promote to 100%',
+        title: 'Build Successful',
+        description: 'If there are any issues, click Rollback. Otherwise, click Promote to Deploy.',
+        promote: 'Promote to Deploy',
         rollback: 'Rollback',
         chartTitle: 'Latency Comparison (ms)',
       },
       promotedPanel: {
         title: 'Deployment Promoted Successfully!',
-        description: 'Your deployment has been successfully promoted to 100% traffic. All systems are running smoothly.',
+        description: 'Your deployment has been successfully promoted. All systems are running smoothly.',
         backToDashboard: 'Back to Dashboard',
       },
       failedPanel: {
-        title: 'Deployment Failed',
-        description: 'The deployment process encountered an error. Please check the logs above for details.',
+        title: 'Build Failed',
+        description: 'The build process encountered an error. Please check the logs above for details.',
         retry: 'Try Again',
       },
       toast: {
@@ -210,10 +187,10 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         strategy: 'このデプロイはCanary戦略を使用します。',
       },
       successPanel: {
-        title: 'デプロイ成功',
-        description: '現在のトラフィックは 新10% / 旧90% です。メトリクスは安定しています。',
-        promote: '100% に切り替え',
-        rollback: 'ロールバック',
+        title: 'Build Successful',
+        description: '問題があればロールバックをクリックしてください。問題がなければ、Promote to Deployボタンをクリックしてください。',
+        promote: 'Promote to Deploy',
+        rollback: 'Rollback',
         chartTitle: 'レイテンシ比較 (ms)',
       },
       promotedPanel: {
@@ -222,8 +199,8 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         backToDashboard: 'ダッシュボードに戻る',
       },
       failedPanel: {
-        title: 'デプロイ失敗',
-        description: 'デプロイ処理でエラーが発生しました。上部のログを確認してください。',
+        title: 'Build Failed',
+        description: 'The build process encountered an error. Please check the logs above for details.',
         retry: '再試行',
       },
       toast: {
@@ -678,31 +655,26 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
         )}
 
         {isSuccess && !isPromoted && (
-          <div className="border-t border-slate-200 bg-white p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom-full duration-500">
-            <div className="mb-4 flex items-center gap-2 text-green-700 font-bold text-lg">
+          <div className="border-t border-slate-200 bg-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom-full duration-500">
+            <div className="mb-3 flex items-center gap-2 text-green-700 font-bold text-lg">
               <CheckCircle size={24} /> {t.successPanel.title}
             </div>
 
-            <div className="flex gap-6">
-              <div className="w-1/2">
-                <MetricsChart title={t.successPanel.chartTitle} />
-              </div>
-              <div className="w-1/2 flex flex-col justify-center gap-3">
-                <p className="text-sm text-slate-500">{t.successPanel.description}</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handlePromote}
-                    className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-bold text-white hover:bg-green-700 shadow-md shadow-green-100 transition-colors"
-                  >
-                    {t.successPanel.promote}
-                  </button>
-                  <button
-                    onClick={handleRollback}
-                    className="flex-1 rounded-xl bg-white border-2 border-slate-200 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-red-500 hover:border-red-200 transition-colors"
-                  >
-                    {t.successPanel.rollback}
-                  </button>
-                </div>
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-slate-500">{t.successPanel.description}</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={handlePromote}
+                  className="flex-1 rounded-xl bg-green-600 py-3 px-5 text-sm font-bold text-white hover:bg-green-700 shadow-md shadow-green-100 transition-colors"
+                >
+                  {t.successPanel.promote}
+                </button>
+                <button
+                  onClick={handleRollback}
+                  className="flex-1 rounded-xl bg-white border-2 border-slate-300 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                >
+                  {t.successPanel.rollback}
+                </button>
               </div>
             </div>
           </div>
