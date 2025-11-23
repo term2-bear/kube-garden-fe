@@ -112,7 +112,7 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
       timeline: {
         lint: 'Test & Lint',
         scan: 'Sec Scan',
-        canary: 'Canary 10%',
+        canary: 'Deploy',
       },
       buttons: {
         deploy: isRedeploy ? 'Redeploy with Gardener Agent' : 'Deploy with Gardener Agent',
@@ -174,8 +174,8 @@ export default function DeploymentConsole({ onBack, deploymentConfig, isRedeploy
       },
       timeline: {
         lint: 'テスト & Lint',
-        scan: 'セキュリティスキャン',
-        canary: 'カナリア 10%',
+        scan: 'Sec Scan',
+        canary: 'Deploy',
       },
       buttons: {
         deploy: isRedeploy ? 'ガーデナーエージェントで再デプロイ' : 'エージェントとデプロイ',
